@@ -1,59 +1,48 @@
-name: Build Android APK
+name: Build Capacitor APK
 
-on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch:
+on: [push]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        cache: 'npm'
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # تم إزالة سطر الـ cache هنا لتجنب الخطأ السابق تماماً لعدم وجود ملف الـ lock
 
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - name: Install Dependencies
+        run: |
+          npm install
+          npm install @capacitor/core @capacitor/cli @capacitor/android
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
+      # هذه الخطوة مهمة جداً لأن مجلد android غير مرفوع في مشروعك، سنقوم بإنشائه الآن ديناميكياً
+      - name: Add Android Platform
+        run: |
+          npx cap add android
 
-    - name: Sync Capacitor
-      run: npx cap sync android
+      - name: Sync Capacitor
+        run: |
+          npx cap sync android
 
-    - name: Build Debug APK
-      run: |
-        cd android
-        ./gradlew assembleDebug
+      # بناء ملف الـ APK
+      - name: Build Android APK
+        working-directory: android
+        run: ./gradlew assembleDebug
 
-    - name: Upload Debug APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: furat-browser-debug
-        path: android/app/build/outputs/apk/debug/app-debug.apk
-
-    - name: Build Release APK
-      run: |
-        cd android
-        ./gradlew assembleRelease
-
-    - name: Upload Release APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: furat-browser-release
-        path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+      # رفع ملف الـ APK الناتج لتحميله من GitHub
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Furat-Browser-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
